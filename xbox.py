@@ -18,7 +18,7 @@ while True:
     time, value, event_type, number = struct.unpack("IhBB", event)
     if event_type == 1:
         print("Button", number, "pressed with value", value)
-    elif event_type == 2:
+    elif event_type == 2 and number != 1:
         arr[number] = value
         print("Axis", number, "moved to", value)
     print(arr)
