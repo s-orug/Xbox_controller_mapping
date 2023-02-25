@@ -98,8 +98,7 @@ int main(){
 		roll = alpha * (roll + Gx * dt) + (1 - alpha) * (atan2(Ay, Az) * 180 / M_PI);
 		pitch = alpha * (pitch + Gy * dt) + (1 - alpha) * (atan2(Ax, sqrt(Ay * Ay + Az * Az)) * 180 / M_PI);
 
-		kalman_roll = kalmanFilter(roll, 0);
-		kalman_pitch = kalmanFilter(pitch, 0);
+
 		
 		printf("\n Roll=%.3f°\tPitch=%.3f°", roll, pitch);
 		// delay(100);
