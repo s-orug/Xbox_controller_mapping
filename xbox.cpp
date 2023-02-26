@@ -26,6 +26,9 @@ int main() {
         } else if (e.type == JS_EVENT_BUTTON) {
             // Handle button events here
             std::cout << "Button " << static_cast<int>(e.number) << " pressed with value " << e.value << std::endl;
+            if (e.number = 12){
+                
+            }
         }
     }
 

@@ -66,7 +66,7 @@ int main()
     float Gyro_x, Gyro_y, Gyro_z;
     float Ax = 0, Ay = 0, Az = 0;
     float Gx = 0, Gy = 0, Gz = 0;
-    float roll = 0, pitch = 0, yaw;
+    float roll = 0, pitch = 0, yaw = 0;
     float alpha = 0.8;
     long long int t_prev, t_now;
     float dt;
