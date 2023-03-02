@@ -14,7 +14,7 @@ CONTROLLER:
 	$(CC) $(CFLAGS) -o $(CONTROLLER) $(CONTROLLER).cpp
 
 STEPPER:
-	$(CC) $(CFLAGS) -o $(STEPPER) $(STEPPER).cpp
+	$(CC) $(CFLAGS) -o $(STEPPER) $(STEPPER).cpp -lwiringPi
 
 clean:
 	rm -rf $(IMU) $(CONTROLLER) $(STEPPER) mpu6050 xbox stepper *.o
