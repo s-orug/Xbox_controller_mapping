@@ -17,4 +17,4 @@ STEPPER:
 	$(CC) $(CFLAGS) -o $(STEPPER) $(STEPPER).cpp
 
 clean:
-	rm -rf $(IMU) $(CONTROLLER) mpu6050 xbox *.o
+	rm -rf $(IMU) $(CONTROLLER) $(STEPPER) mpu6050 xbox stepper *.o
