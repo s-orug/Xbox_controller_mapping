@@ -146,12 +146,3 @@ int main() {
   return 0;
 }
 
-int main() {
-  // Open the joystick device
-
-  // Read the joystick events
-
-  // Close the joystick device
-
-  return 0;
-}
