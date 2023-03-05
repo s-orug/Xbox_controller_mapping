@@ -8,6 +8,7 @@ STEPPER=stepper
 
 main: 
 	$(CC) $(CFLAGS) -o main main.cpp -lwiringPi
+	
 IMU:
 	$(CC) $(CFLAGS) -o $(IMU) $(IMU).cpp -lwiringPi
 

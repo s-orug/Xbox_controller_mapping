@@ -11,7 +11,7 @@ fcntl.ioctl(joystick_fd, 0x80016a11, struct.pack('I', num_axes))
 fcntl.ioctl(joystick_fd, 0x80016a12, struct.pack('I', num_buttons))
 print("Joystick connected with", num_axes, "axes and", num_buttons, "buttons.")
 
-arr = [0,0,0,0,0,0,0,0]
+arr = [0, 0, 0, 0, 0, 0, 0, 0]
 
 while True:
     event = os.read(joystick_fd, 8)
