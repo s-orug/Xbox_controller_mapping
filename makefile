@@ -17,5 +17,12 @@ CONTROLLER:
 STEPPER:
 	$(CC) $(CFLAGS) -o $(STEPPER) $(STEPPER).cpp -lwiringPi
 
+ALL:
+	$(CC) $(CFLAGS) -o $(STEPPER) $(STEPPER).cpp -lwiringPi
+	$(CC) $(CFLAGS) -o $(CONTROLLER) $(CONTROLLER).cpp
+	$(CC) $(CFLAGS) -o $(IMU) $(IMU).cpp -lwiringPi
+	$(CC) $(CFLAGS) -o main main.cpp -lwiringPi
+
+
 clean:
 	rm -rf $(IMU) $(CONTROLLER) $(STEPPER) main *.o
