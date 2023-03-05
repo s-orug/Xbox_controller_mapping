@@ -1,12 +1,13 @@
 CC=g++
 CFLAGS = -Wall -g
 
+
 IMU=mpu6050
 CONTROLLER=xbox
 STEPPER=stepper
 
-main: $(IMU) $(CONTROLLER)
-
+main: 
+	$(CC) $(CFLAGS) -o main main.cpp -lwiringPi
 IMU:
 	$(CC) $(CFLAGS) -o $(IMU) $(IMU).cpp -lwiringPi
 
