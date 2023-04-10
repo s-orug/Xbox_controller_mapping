@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
+#include <thread>
 
 #define Device_Address 0x68
 
@@ -19,6 +20,16 @@
 #define GYRO_ZOUT_H 0x47
 
 int fd;
+float Acc_x, Acc_y, Acc_z;
+float Gyro_x, Gyro_y, Gyro_z;
+float Ax = 0, Ay = 0, Az = 0;
+float Gx = 0, Gy = 0, Gz = 0;
+float roll = 0, pitch = 0, yaw = 0;
+float alpha = 0.8;
+long long int t_prev, t_now;
+float dt;
+
+
 
 void MPU6050_Init() {
   wiringPiI2CWriteReg8(fd, SMPLRT_DIV,
@@ -59,22 +70,8 @@ float get_gyro_bias() {
   return sqrt(avg_x * avg_x + avg_y * avg_y + avg_z * avg_z);
 }
 
-int main() {
-
-  float Acc_x, Acc_y, Acc_z;
-  float Gyro_x, Gyro_y, Gyro_z;
-  float Ax = 0, Ay = 0, Az = 0;
-  float Gx = 0, Gy = 0, Gz = 0;
-  float roll = 0, pitch = 0, yaw = 0;
-  float alpha = 0.8;
-  long long int t_prev, t_now;
-  float dt;
-
-  fd = wiringPiI2CSetup(Device_Address); /*Initializes I2C with device Address*/
-  MPU6050_Init();                        /* Initializes MPU6050 */
-
-  t_prev = micros();
-  while (1) {
+void updateIMU(){
+ while (1) {
     Acc_x = read_raw_data(ACCEL_XOUT_H);
     Acc_y = read_raw_data(ACCEL_YOUT_H);
     Acc_z = read_raw_data(ACCEL_ZOUT_H);
@@ -95,15 +92,34 @@ int main() {
     dt = (t_now - t_prev) / 1000000.0;
     t_prev = t_now;
 
-    roll =
-        alpha * (roll + Gx * dt) + (1 - alpha) * (atan2(Ay, Az) * 180 / M_PI);
-    pitch = alpha * (pitch + Gy * dt) +
-            (1 - alpha) * (atan2(Ax, sqrt(Ay * Ay + Az * Az)) * 180 / M_PI);
-    yaw = alpha * (yaw + Gz * dt) +
-          (1 - alpha) * (atan2(sqrt(Ay * Ay + Az * Az), Ax) * 180 / M_PI);
+    //roll =
+    //    alpha * (roll + Gx * dt) + (1 - alpha) * (atan2(Ay, Az) * 180 / M_PI);
+    //pitch = alpha * (pitch + Gy * dt) +
+    //        (1 - alpha) * (atan2(Ax, sqrt(Ay * Ay + Az * Az)) * 180 / M_PI);
+    //yaw = alpha * (yaw + Gz * dt) +
+    //      (1 - alpha) * (atan2(sqrt(Ay * Ay + Az * Az), Ax) * 180 / M_PI);
+    roll = Ax;
+    pitch = Ay;
+    yaw = Az;
+ }
+  
+}
 
+int main() {
+
+
+  fd = wiringPiI2CSetup(Device_Address); /*Initializes I2C with device Address*/
+  MPU6050_Init();                        /* Initializes MPU6050 */  
+
+  t_prev = micros();
+
+
+  std::thread imu(updateIMU);
+  
+  while (1) {
     printf("\n Roll=%.3f°\tPitch=%.3f°\tYaw=%.3f°", roll, pitch, yaw);
     delay(10);
   }
+  imu.join();
   return 0;
 }

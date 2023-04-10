@@ -9,9 +9,9 @@ TEST=test
 
 main: 
 	$(CC) $(CFLAGS) -o main main.cpp -lwiringPi
-	
+
 IMU:
-	$(CC) $(CFLAGS) -o $(IMU) $(IMU).cpp -lwiringPi
+	$(CC) $(CFLAGS) -o $(IMU) $(IMU).cpp -pthread -lwiringPi
 
 CONTROLLER:
 	$(CC) $(CFLAGS) -o $(CONTROLLER) $(CONTROLLER).cpp
