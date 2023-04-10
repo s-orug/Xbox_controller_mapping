@@ -2,13 +2,14 @@
 #include <iostream>
 
 // Define pins for the motor
-const int STEP_PIN = 17; // GPIO17 (WiringPi pin 0)
-const int DIR_PIN = 27;  // GPIO27 (WiringPi pin 2)
+//                         W  B 
+const int STEP_PIN = 19; //16 19  GPIO17 (WiringPi pin 0)
+const int DIR_PIN = 26;  //13 26  GPIO27 (WiringPi pin 2)
 
 // Define stepper motor parameters
 const int STEPS_PER_REV = 200;   // Steps per revolution
 const int MICROSTEPS = 1;       // Microsteps per step
-const float STEP_DELAY = 50000.0;  // Delay in microseconds between each step
+const float STEP_DELAY = 2000.0;  // Delay in microseconds between each step
 
 int main() {
     // Initialize WiringPi library
