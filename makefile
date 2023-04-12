@@ -7,9 +7,13 @@ CONTROLLER=xbox
 STEPPER=stepper
 TEST=test
 STEPPERS=steppers
+BETA=beta
 
 main: 
 	$(CC) $(CFLAGS) -o main main.cpp -lwiringPi
+
+BETA:
+	$(CC) $(CFLAGS) -o $(BETA) $(BETA).cpp -pthread -lwiringPi
 
 IMU:
 	$(CC) $(CFLAGS) -o $(IMU) $(IMU).cpp -pthread -lwiringPi
@@ -33,4 +37,4 @@ test:
 	$(CC) $(CFLAGS) -o $(TEST) $(TEST).cpp -pthread
 
 clean:
-	rm -rf $(IMU) $(CONTROLLER) $(STEPPER) $(TEST) $(STEPPERS) main *.o
+	rm -rf $(IMU) $(CONTROLLER) $(STEPPER) $(BETA) $(TEST) $(STEPPERS) main *.o
