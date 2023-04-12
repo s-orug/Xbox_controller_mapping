@@ -70,8 +70,7 @@ float get_gyro_bias() {
   return sqrt(avg_x * avg_x + avg_y * avg_y + avg_z * avg_z);
 }
 
-void updateIMU(){
- while (1) {
+void readIMU(){
     Acc_x = read_raw_data(ACCEL_XOUT_H);
     Acc_y = read_raw_data(ACCEL_YOUT_H);
     Acc_z = read_raw_data(ACCEL_ZOUT_H);
@@ -86,23 +85,21 @@ void updateIMU(){
 
     Gx = Gyro_x / 131;
     Gy = Gyro_y / 131;
-    Gz = Gyro_z / 131;
+    Gz = Gyro_z / 131;  
+}
 
-    t_now = micros();
-    dt = (t_now - t_prev) / 1000000.0;
-    t_prev = t_now;
-
-    //roll =
-    //    alpha * (roll + Gx * dt) + (1 - alpha) * (atan2(Ay, Az) * 180 / M_PI);
-    //pitch = alpha * (pitch + Gy * dt) +
-    //        (1 - alpha) * (atan2(Ax, sqrt(Ay * Ay + Az * Az)) * 180 / M_PI);
-    //yaw = alpha * (yaw + Gz * dt) +
-    //      (1 - alpha) * (atan2(sqrt(Ay * Ay + Az * Az), Ax) * 180 / M_PI);
-    roll = Ax;
-    pitch = Ay;
-    yaw = Az;
+void updateIMU(){
+ while (1) {
+   readIMU();
+   
  }
   
+}
+
+void printIMU(){
+  while (1) {
+    printf("\n Roll=%.3f°\tPitch=%.3f°\tYaw=%.3f°", roll, pitch, yaw);
+  }
 }
 
 int main() {
@@ -115,11 +112,8 @@ int main() {
 
 
   std::thread imu(updateIMU);
-  
-  while (1) {
-    printf("\n Roll=%.3f°\tPitch=%.3f°\tYaw=%.3f°", roll, pitch, yaw);
-    delay(10);
-  }
+  std::thread printi(printIMU);
   imu.join();
+  printi.join();
   return 0;
 }

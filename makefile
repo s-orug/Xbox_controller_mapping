@@ -6,6 +6,7 @@ IMU=mpu6050
 CONTROLLER=xbox
 STEPPER=stepper
 TEST=test
+STEPPERS=steppers
 
 main: 
 	$(CC) $(CFLAGS) -o main main.cpp -lwiringPi
@@ -19,6 +20,9 @@ CONTROLLER:
 STEPPER:
 	$(CC) $(CFLAGS) -o $(STEPPER) $(STEPPER).cpp -lwiringPi
 
+STEPPERS:
+	$(CC) $(CFLAGS) -o $(STEPPERS) $(STEPPERS).cpp -pthread -lwiringPi
+
 ALL:
 	$(CC) $(CFLAGS) -o $(STEPPER) $(STEPPER).cpp -lwiringPi
 	$(CC) $(CFLAGS) -o $(CONTROLLER) $(CONTROLLER).cpp
@@ -29,4 +33,4 @@ test:
 	$(CC) $(CFLAGS) -o $(TEST) $(TEST).cpp -pthread
 
 clean:
-	rm -rf $(IMU) $(CONTROLLER) $(STEPPER) $(TEST) main *.o
+	rm -rf $(IMU) $(CONTROLLER) $(STEPPER) $(TEST) $(STEPPERS) main *.o
