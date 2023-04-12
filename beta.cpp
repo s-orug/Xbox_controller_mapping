@@ -1,9 +1,13 @@
+#include <cstdlib>
+#include <iostream>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <thread>
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
+
+#define mapRange(a1,a2,b1,b2,s) (b1 + (s-a1)*(b2-b1)/(a2-a1))
 
 // Define pins for motor 1
 #define M1_DIR_PIN 13
@@ -157,6 +161,10 @@ void readIMU() {
   }
 }
 
+long map(long x, long in_min, long in_max, long out_min, long out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 // Set the PID parameters
 double Kp = 1;
 double Ki = 0;
@@ -172,6 +180,7 @@ float delay1 = 0;
 float finDelay = 0;
 int direction;
 
+long numSteps=0;
 int main() {
 
   fd = wiringPiI2CSetup(Device_Address); /*Initializes I2C with device Address*/
@@ -198,13 +207,15 @@ int main() {
 
     delay1 = (60 * 1000) / (200 * speed1) * 6;
 
-    finDelay = abs(delay1);
-    direction = (delay1 > 0) ? 1 : 0;
-    printf("S1: %.3f\tS2: %.3f\tPITCH:%.3f\n", delay1, speed2, pitch);
+    numSteps= abs(map(speed1, -10, 10, 0, -10));
+    finDelay = map(abs(speed1), 0, 30000, 1000, 2000);
+    if(speed1>=0){direction = 0;}else{direction = 1;}
 
-    if (0 < finDelay && finDelay < 5000) {
-      std::thread t1(motor1, direction, 3, finDelay);
-      std::thread t2(motor2, direction * -1, 3, finDelay);
+    printf("N: %d\tF: %.3f\tD: %d\n", numSteps, finDelay, direction);
+
+    if (numSteps) {
+      std::thread t1(motor1, direction, numSteps, finDelay);
+      std::thread t2(motor2, direction, numSteps, finDelay);
 
       t1.join();
       t2.join();
