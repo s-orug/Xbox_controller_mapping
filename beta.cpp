@@ -1,9 +1,9 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <thread>
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
-#include <thread>
 
 // Define pins for motor 1
 #define M1_DIR_PIN 13
@@ -12,7 +12,6 @@
 // Define pins for motor 2
 #define M2_DIR_PIN 26
 #define M2_STEP_PIN 19
-
 
 #define Device_Address 0x68
 
@@ -39,7 +38,6 @@ float roll = 0, pitch = 0, yaw = 0;
 float alpha = 0.8;
 long long int t_prev, t_now;
 float dt;
-
 
 void MPU6050_Init() {
   wiringPiI2CWriteReg8(fd, SMPLRT_DIV,
@@ -81,51 +79,54 @@ float get_gyro_bias() {
 }
 
 void setup() {
-    // Initialize the wiringPi library
-    wiringPiSetupGpio();
+  // Initialize the wiringPi library
+  wiringPiSetupGpio();
 
-    // Set the direction and step pins as output
-    pinMode(M1_DIR_PIN, OUTPUT);
-    pinMode(M1_STEP_PIN, OUTPUT);
-    pinMode(M2_DIR_PIN, OUTPUT);
-    pinMode(M2_STEP_PIN, OUTPUT);
+  // Set the direction and step pins as output
+  pinMode(M1_DIR_PIN, OUTPUT);
+  pinMode(M1_STEP_PIN, OUTPUT);
+  pinMode(M2_DIR_PIN, OUTPUT);
+  pinMode(M2_STEP_PIN, OUTPUT);
 }
 
 // Function to control the motor 1
 void motor1(int direction, int steps, int delay) {
-  M1_LOCK = 1;
+  if (!M1_LOCK) {
+    M1_LOCK = 1;
     // Set the direction pin based on the input
     digitalWrite(M1_DIR_PIN, direction);
 
     // Step the motor the specified number of times
     for (int i = 0; i < steps; i++) {
-        digitalWrite(M1_STEP_PIN, HIGH);
-        delayMicroseconds(delay);
-        digitalWrite(M1_STEP_PIN, LOW);
-        delayMicroseconds(delay);
+      digitalWrite(M1_STEP_PIN, HIGH);
+      delayMicroseconds(delay);
+      digitalWrite(M1_STEP_PIN, LOW);
+      delayMicroseconds(delay);
     }
     M1_LOCK = 0;
+  }
 }
 
 // Function to control the motor 2
 void motor2(int direction, int steps, int delay) {
-  M2_LOCK = 1;
+  if (!M2_LOCK) {
+    M2_LOCK = 1;
     // Set the direction pin based on the input
     digitalWrite(M2_DIR_PIN, direction);
 
     // Step the motor the specified number of times
     for (int i = 0; i < steps; i++) {
-        digitalWrite(M2_STEP_PIN, HIGH);
-        delayMicroseconds(delay);
-        digitalWrite(M2_STEP_PIN, LOW);
-        delayMicroseconds(delay);
+      digitalWrite(M2_STEP_PIN, HIGH);
+      delayMicroseconds(delay);
+      digitalWrite(M2_STEP_PIN, LOW);
+      delayMicroseconds(delay);
     }
     M2_LOCK = 0;
+  }
 }
 
-
-void readIMU(){
-  while(1){
+void readIMU() {
+  while (1) {
     Acc_x = read_raw_data(ACCEL_XOUT_H);
     Acc_y = read_raw_data(ACCEL_YOUT_H);
     Acc_z = read_raw_data(ACCEL_ZOUT_H);
@@ -140,7 +141,7 @@ void readIMU(){
 
     Gx = Gyro_x / 131;
     Gy = Gyro_y / 131;
-    Gz = Gyro_z / 131;  
+    Gz = Gyro_z / 131;
 
     t_now = micros();
     dt = (t_now - t_prev) / 1000000.0;
@@ -153,8 +154,7 @@ void readIMU(){
     yaw = alpha * (yaw + Gz * dt) +
           (1 - alpha) * (atan2(sqrt(Ay * Ay + Az * Az), Ax) * 180 / M_PI);
     //    printf("\n Roll=%.3f°\tPitch=%.3f°\tYaw=%.3f°", roll, pitch, yaw);
-}
-
+  }
 }
 
 // Set the PID parameters
@@ -178,50 +178,44 @@ int main() {
   MPU6050_Init();                        /* Initializes MPU6050 */
   setup();
 
-  //  std::thread t1(motor1, 1, 2000, 1500);  // clockwise
-  //  std::thread t2(motor2, 0, 2000, 1500);  // counterclockwise
   t_prev = micros();
-  std::thread t3(readIMU);  
+  std::thread t3(readIMU);
 
   while (true) {
-        // Read the sensor data
-        
+    // Read the sensor data
 
-        // Calculate the error
-        double error = desired_angle - pitch;
+    // Calculate the error
+    double error = desired_angle - pitch;
 
-        // Calculate the PID terms
-        double proportional = Kp * error;
-        integral += Ki * error;
-        double derivative = Kd * (error - prev_error);
+    // Calculate the PID terms
+    double proportional = Kp * error;
+    integral += Ki * error;
+    double derivative = Kd * (error - prev_error);
 
-        // Calculate the motor speed
-        double speed1 = proportional + integral + derivative;
-        double speed2 = proportional + integral + derivative;
+    // Calculate the motor speed
+    double speed1 = proportional + integral + derivative;
+    double speed2 = proportional + integral + derivative;
 
-	delay1 = (60*1000)/(200*speed1)*6;
+    delay1 = (60 * 1000) / (200 * speed1) * 6;
 
-	finDelay = abs(delay1);
-	direction = (delay1 > 0) ? 1 : 0;
-	printf("S1: %.3f\tS2: %.3f\tPITCH:%.3f\n", delay1, speed2, pitch);
-        // Update the motor position
-	
-	if (0 < finDelay && finDelay < 5000){
-	//int val = 
-	std::thread t1(motor1, direction, 3, finDelay);  // clockwise                                 
-	std::thread t2(motor2, direction*-1, 3, finDelay);  // counterclockwise   
-	//set_motor_speed(motor1_pins, speed1);
-        //set_motor_speed(motor2_pins, speed2);
+    finDelay = abs(delay1);
+    direction = (delay1 > 0) ? 1 : 0;
+    printf("S1: %.3f\tS2: %.3f\tPITCH:%.3f\n", delay1, speed2, pitch);
 
-	t1.join();
-	t2.join();}
-	  // Save the previous error
-        prev_error = error;
+    if (0 < finDelay && finDelay < 5000) {
+      std::thread t1(motor1, direction, 3, finDelay);
+      std::thread t2(motor2, direction * -1, 3, finDelay);
+
+      t1.join();
+      t2.join();
     }
-  
+    // Save the previous error
+    prev_error = error;
+  }
+
   //  t1.join();
   //  t2.join();
   t3.join();
-  
+
   return 0;
 }
