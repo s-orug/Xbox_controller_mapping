@@ -98,7 +98,7 @@ void updateIMU(){
 
 void printIMU(){
   while (1) {
-    printf("\n Roll=%.3f°\tPitch=%.3f°\tYaw=%.3f°", roll, pitch, yaw);
+    printf("\n Ax=%.3f°\tAy=%.3f°\tAz=%.3f°", Ax,Ay,Az);
   }
 }
 

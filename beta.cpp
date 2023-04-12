@@ -152,11 +152,25 @@ void readIMU(){
             (1 - alpha) * (atan2(Ax, sqrt(Ay * Ay + Az * Az)) * 180 / M_PI);
     yaw = alpha * (yaw + Gz * dt) +
           (1 - alpha) * (atan2(sqrt(Ay * Ay + Az * Az), Ax) * 180 / M_PI);
-    printf("\n Roll=%.3f°\tPitch=%.3f°\tYaw=%.3f°", roll, pitch, yaw);
+    //    printf("\n Roll=%.3f°\tPitch=%.3f°\tYaw=%.3f°", roll, pitch, yaw);
 }
 
 }
 
+// Set the PID parameters
+double Kp = 1;
+double Ki = 0;
+double Kd = 0;
+
+// Set the desired angle
+double desired_angle = 0;
+
+// Define the variables for the PID controller
+double prev_error = 0;
+double integral = 0;
+float delay1 = 0;
+float finDelay = 0;
+int direction;
 
 int main() {
 
@@ -164,13 +178,49 @@ int main() {
   MPU6050_Init();                        /* Initializes MPU6050 */
   setup();
 
-  std::thread t1(motor1, 1, 2000, 1500);  // clockwise
-  std::thread t2(motor2, 0, 2000, 1500);  // counterclockwise
+  //  std::thread t1(motor1, 1, 2000, 1500);  // clockwise
+  //  std::thread t2(motor2, 0, 2000, 1500);  // counterclockwise
   t_prev = micros();
   std::thread t3(readIMU);  
 
-  t1.join();
-  t2.join();
+  while (true) {
+        // Read the sensor data
+        
+
+        // Calculate the error
+        double error = desired_angle - pitch;
+
+        // Calculate the PID terms
+        double proportional = Kp * error;
+        integral += Ki * error;
+        double derivative = Kd * (error - prev_error);
+
+        // Calculate the motor speed
+        double speed1 = proportional + integral + derivative;
+        double speed2 = proportional + integral + derivative;
+
+	delay1 = (60*1000)/(200*speed1)*6;
+
+	finDelay = abs(delay1);
+	direction = (delay1 > 0) ? 1 : 0;
+	printf("S1: %.3f\tS2: %.3f\tPITCH:%.3f\n", delay1, speed2, pitch);
+        // Update the motor position
+	
+	if (0 < finDelay && finDelay < 5000){
+	//int val = 
+	std::thread t1(motor1, direction, 3, finDelay);  // clockwise                                 
+	std::thread t2(motor2, direction*-1, 3, finDelay);  // counterclockwise   
+	//set_motor_speed(motor1_pins, speed1);
+        //set_motor_speed(motor2_pins, speed2);
+
+	t1.join();
+	t2.join();}
+	  // Save the previous error
+        prev_error = error;
+    }
+  
+  //  t1.join();
+  //  t2.join();
   t3.join();
   
   return 0;
