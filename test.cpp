@@ -51,9 +51,9 @@ float dt;
 // MATLAB tuned PID params.
 // Controller Parameters: P = 2.968, I = 9.758, D = 0.1838, N = 7181
 
-float pid_p_gain = 38;
-float pid_i_gain = 1;
-float pid_d_gain = 36;
+float pid_p_gain = 2.968;
+float pid_i_gain = 9.758;
+float pid_d_gain = 0.1838;
 float turning_speed = 400;                                    //Turning speed (900)
 float max_target_speed = 1400;     
 
@@ -89,6 +89,20 @@ short read_raw_data(int addr) {
   value = (high_byte << 8) | low_byte;
   return value;
 }
+
+void MPU6050_Init() {
+  wiringPiI2CWriteReg8(fd, SMPLRT_DIV,
+                       0x07); /* Write to sample rate register */
+  wiringPiI2CWriteReg8(fd, PWR_MGMT_1,
+                       0x01);          /* Write to power management register */
+  wiringPiI2CWriteReg8(fd, CONFIG, 0); /* Write to Configuration register */
+  wiringPiI2CWriteReg8(fd, GYRO_CONFIG,
+                       24); /* Write to Gyro Configuration register */
+  wiringPiI2CWriteReg8(fd, INT_ENABLE,
+                       0x01); /* Write to interrupt enable register */
+}
+
+
 
 float get_gyro_bias() {
   const int num_samples = 1000;
@@ -137,7 +151,7 @@ void readIMU() {
             (1 - alpha) * (atan2(Ax, sqrt(Ay * Ay + Az * Az)) * 180 / M_PI);
     yaw = alpha * (yaw + Gz * dt) +
           (1 - alpha) * (atan2(sqrt(Ay * Ay + Az * Az), Ax) * 180 / M_PI);
-    //    printf("\n Roll=%.3f°\tPitch=%.3f°\tYaw=%.3f°", roll, pitch, yaw);
+     printf("\n Roll=%.3f°\tPitch=%.3f°\tYaw=%.3f°", roll, pitch, yaw);
   }
 }
 
@@ -163,11 +177,13 @@ void leftMotorControl() {
       throttle_left_motor_memory = throttle_left_motor;
       if (throttle_left_motor_memory < 0) {
         digitalWrite(M1_DIR_PIN, LOW);
+	delay(5);
         throttle_left_motor_memory *= -1;
       } else
         digitalWrite(M1_DIR_PIN, HIGH);
     } else if (throttle_counter_left_motor == 1) {
       digitalWrite(M1_STEP_PIN, HIGH);
+      delay(1);
     } else if (throttle_counter_left_motor == 2) {
       digitalWrite(M1_STEP_PIN, LOW);
     }
@@ -181,12 +197,15 @@ void rightMotorControl() {
       throttle_counter_right_motor = 0;
       throttle_right_motor_memory = throttle_right_motor;
       if (throttle_right_motor_memory < 0) {
-        digitalWrite(M2_DIR_PIN, HIGH);
+        digitalWrite(M2_DIR_PIN, LOW);
+	delay(5);
         throttle_right_motor_memory *= -1;
       } else
-        digitalWrite(M2_DIR_PIN, LOW);
+        digitalWrite(M2_DIR_PIN, HIGH);
     } else if (throttle_counter_right_motor == 1) {
       digitalWrite(M2_STEP_PIN, HIGH);
+      //printf("moving\n");
+      delay(1);
     } else if (throttle_counter_right_motor == 2) {
       digitalWrite(M2_STEP_PIN, LOW);
     }
@@ -216,10 +235,12 @@ int main() {
   std::thread rightMotorT(rightMotorControl);
 
   while (true) {
-    pid_error_temp = pitch - self_balance_pid_setpoint - pid_setpoint;
+    pid_error_temp = pitch - pid_setpoint;
+    // std::cout << pid_error_temp << std::endl;
     if (pid_output > 10 || pid_output < -10) {
       pid_error_temp += pid_output * 0.015;
     }
+  
 
     pid_i_mem += pid_i_gain * pid_error_temp;
     if (pid_i_mem > speed_m) {
@@ -228,8 +249,8 @@ int main() {
       pid_i_mem = -speed_m;
     }
     // Calculate the PID output value
-    pid_output = pid_p_gain * pid_error_temp + pid_i_mem +
-                 pid_d_gain * (pid_error_temp - pid_last_d_error);
+    pid_output = pid_p_gain * pid_error_temp; 
+      // +  pid_d_gain * (pid_error_temp - pid_last_d_error);
     if (pid_output > speed_m) {
       pid_output = speed_m;
     } else if (pid_output < -speed_m) {
@@ -238,15 +259,20 @@ int main() {
 
     pid_last_d_error = pid_error_temp;
 
-    if (pid_output < 5 && pid_output > -5) {
+    if (pid_output < 8 && pid_output > -8) {
       pid_output = 0;
     }
+    /*if(pid_output > 15 || pid_output < -15) {
+      pid_output = 15;
+    }*/
 
-    if (pitch > 40 || pitch < -40) {
+    if (pitch > 30 || pitch < -30) {
       pid_output = 0;
       pid_i_mem = 0;
       self_balance_pid_setpoint = 0;
     }
+    //printf("%d\n",pid_error_tem);
+    //printf("%f\n",pid_output);
 
     pid_output_left = pid_output;
     pid_output_right = pid_output;
