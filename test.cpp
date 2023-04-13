@@ -75,6 +75,8 @@ float gx_p = 0, gy_p = 0;
 int left_motor;
 int right_motor;
 
+int DELAY = 2;
+
 int throttle_left_motor = 200;  // initial throttle for left motor
 int throttle_right_motor = 200; // initial throttle for right motor
 int throttle_counter_left_motor = 0;
@@ -174,8 +176,8 @@ void readIMU() {
 
     roll =
         alpha * (roll + Gx * dt) + (1 - alpha) * (atan2(Ay, Az) * 180 / M_PI);
-    pitch = alpha * (pitch + Gy * dt) +
-            (1 - alpha) * (atan2(Ax, sqrt(Ay * Ay + Az * Az)) * 180 / M_PI);
+    pitch = current_pitch;//alpha * (pitch + Gy * dt) +
+            //(1 - alpha) * (atan2(Ax, sqrt(Ay * Ay + Az * Az)) * 180 / M_PI);
     yaw = alpha * (yaw + Gz * dt) +
           (1 - alpha) * (atan2(sqrt(Ay * Ay + Az * Az), Ax) * 180 / M_PI);
 
@@ -206,15 +208,15 @@ void leftMotorControl() {
       throttle_left_motor_memory = throttle_left_motor;
       if (throttle_left_motor_memory < 0) {
         digitalWrite(M1_DIR_PIN, LOW);
-        delay(5);
         throttle_left_motor_memory *= -1;
       } else
         digitalWrite(M1_DIR_PIN, HIGH);
     } else if (throttle_counter_left_motor == 1) {
       digitalWrite(M1_STEP_PIN, HIGH);
-      delay(1);
+      delay(DELAY);
     } else if (throttle_counter_left_motor == 2) {
       digitalWrite(M1_STEP_PIN, LOW);
+      delay(2);
     }
   }
 }
@@ -227,16 +229,16 @@ void rightMotorControl() {
       throttle_right_motor_memory = throttle_right_motor;
       if (throttle_right_motor_memory < 0) {
         digitalWrite(M2_DIR_PIN, LOW);
-        delay(5);
         throttle_right_motor_memory *= -1;
       } else
         digitalWrite(M2_DIR_PIN, HIGH);
     } else if (throttle_counter_right_motor == 1) {
       digitalWrite(M2_STEP_PIN, HIGH);
       // printf("moving\n");
-      delay(1);
+      delay(DELAY);
     } else if (throttle_counter_right_motor == 2) {
       digitalWrite(M2_STEP_PIN, LOW);
+      delay(2);
     }
   }
 }
@@ -287,7 +289,7 @@ int main() {
 
     pid_last_d_error = pid_error_temp;
 
-    if (pid_output < 8 && pid_output > -8) {
+    if (pid_output < 3 && pid_output > -3) {
       pid_output = 0;
     }
     /*if(pid_output > 15 || pid_output < -15) {
