@@ -140,7 +140,7 @@ void rightMotorPulse() {
 
 void leftMotorControl() {
     while (true) {
-        throttle_counter_left_motor ++;
+        throttle_counter_left_motor++;
         if (throttle_counter_left_motor > throttle_left_motor_memory) {
             throttle_counter_left_motor = 0;
             throttle_left_motor_memory = throttle_left_motor;
@@ -151,14 +151,17 @@ void leftMotorControl() {
             else digitalWrite(M1_DIR_PIN, HIGH);
         }
         else if (throttle_counter_left_motor == 1) {
-            leftMotorPulse();
+            digitalWrite(M1_STEP_PIN, HIGH);
+        }
+        else if (throttle_counter_left_motor == 2) {
+            digitalWrite(M1_STEP_PIN, LOW);
         }
     }
 }
 
 void rightMotorControl() {
     while (true) {
-        throttle_counter_right_motor ++;
+        throttle_counter_right_motor++;
         if (throttle_counter_right_motor > throttle_right_motor_memory) {
             throttle_counter_right_motor = 0;
             throttle_right_motor_memory = throttle_right_motor;
@@ -169,7 +172,10 @@ void rightMotorControl() {
             else digitalWrite(M2_DIR_PIN, LOW);
         }
         else if (throttle_counter_right_motor == 1) {
-            rightMotorPulse();
+            digitalWrite(M2_STEP_PIN, HIGH);
+        }
+        else if (throttle_counter_right_motor == 2) {
+            digitalWrite(M2_STEP_PIN, LOW);
         }
     }
 }
@@ -186,7 +192,6 @@ void setup() {
 
   fd = wiringPiI2CSetup(Device_Address); /*Initializes I2C with device Address*/
   MPU6050_Init();                        /* Initializes MPU6050 */
-
 
 }
 
