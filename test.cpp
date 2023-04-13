@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <thread>
+
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
 
@@ -36,6 +37,8 @@
 #define GYRO_YOUT_H 0x45
 #define GYRO_ZOUT_H 0x47
 
+#define alpha1 0.03
+
 int fd;
 int M1_LOCK = 0, M2_LOCK = 0;
 
@@ -54,8 +57,8 @@ float dt;
 float pid_p_gain = 2.968;
 float pid_i_gain = 9.758;
 float pid_d_gain = 0.1838;
-float turning_speed = 400;                                    //Turning speed (900)
-float max_target_speed = 1400;     
+float turning_speed = 400; // Turning speed (900)
+float max_target_speed = 1400;
 
 float angle_gyro, angle_acc, angle, self_balance_pid_setpoint;
 float pid_error_temp, pid_i_mem, pid_setpoint, gyro_input, pid_output,
@@ -63,6 +66,11 @@ float pid_error_temp, pid_i_mem, pid_setpoint, gyro_input, pid_output,
 float pid_output_left, pid_output_right;
 int speed_m = 1000; // max 2500
 float pickup = 0.009;
+float current_pitch = 0;
+
+float ax_lp = 0, ay_lp = 0, az_lp = 0;
+float gx_hp = 0, gy_hp = 0, gz_hp = 0;
+float gx_p = 0, gy_p = 0;
 
 int left_motor;
 int right_motor;
@@ -102,8 +110,6 @@ void MPU6050_Init() {
                        0x01); /* Write to interrupt enable register */
 }
 
-
-
 float get_gyro_bias() {
   const int num_samples = 1000;
   const int sample_interval_ms = 1;
@@ -121,6 +127,20 @@ float get_gyro_bias() {
   float avg_y = sum_y / num_samples;
   float avg_z = sum_z / num_samples;
   return sqrt(avg_x * avg_x + avg_y * avg_y + avg_z * avg_z);
+}
+
+void filter() {
+  // low pass;
+  ax_lp = (1 - alpha) * (Ax) + (alpha * (ax_lp));
+  ay_lp = (1 - alpha) * (Ay) + (alpha * (ay_lp));
+  az_lp = (1 - alpha) * (Az) + (alpha * (az_lp));
+
+  // high pass;
+  gx_hp = (1 - alpha) * gx_hp + (1 - alpha) * ((Gx)-gx_p);
+  gy_hp = (1 - alpha) * gy_hp + (1 - alpha) * ((Gy)-gy_p);
+
+  gx_p = gx_hp;
+  gy_p = gy_hp;
 }
 
 void readIMU() {
@@ -141,9 +161,16 @@ void readIMU() {
     Gy = Gyro_y / 131;
     Gz = Gyro_z / 131;
 
+
     t_now = micros();
     dt = (t_now - t_prev) / 1000000.0;
     t_prev = t_now;
+
+    filter();
+      current_pitch   = current_pitch - (gy_hp*dt);
+    float acc_angle = atan2(ax_lp,sqrt(az_lp*az_lp))*(180/3.1415); 
+
+    current_pitch   = (1-alpha1)*current_pitch + (alpha1)*(acc_angle); //complementary filter
 
     roll =
         alpha * (roll + Gx * dt) + (1 - alpha) * (atan2(Ay, Az) * 180 / M_PI);
@@ -151,7 +178,9 @@ void readIMU() {
             (1 - alpha) * (atan2(Ax, sqrt(Ay * Ay + Az * Az)) * 180 / M_PI);
     yaw = alpha * (yaw + Gz * dt) +
           (1 - alpha) * (atan2(sqrt(Ay * Ay + Az * Az), Ax) * 180 / M_PI);
-     printf("\n Roll=%.3f°\tPitch=%.3f°\tYaw=%.3f°", roll, pitch, yaw);
+
+    // printf("\n Roll=%.3f°\tPitch=%.3f°\tYaw=%.3f°", roll, pitch, yaw);
+    printf("\n Current Pitch=%.3f°\tPitch=%.3f°\n", current_pitch, pitch);
   }
 }
 
@@ -177,7 +206,7 @@ void leftMotorControl() {
       throttle_left_motor_memory = throttle_left_motor;
       if (throttle_left_motor_memory < 0) {
         digitalWrite(M1_DIR_PIN, LOW);
-	delay(5);
+        delay(5);
         throttle_left_motor_memory *= -1;
       } else
         digitalWrite(M1_DIR_PIN, HIGH);
@@ -198,13 +227,13 @@ void rightMotorControl() {
       throttle_right_motor_memory = throttle_right_motor;
       if (throttle_right_motor_memory < 0) {
         digitalWrite(M2_DIR_PIN, LOW);
-	delay(5);
+        delay(5);
         throttle_right_motor_memory *= -1;
       } else
         digitalWrite(M2_DIR_PIN, HIGH);
     } else if (throttle_counter_right_motor == 1) {
       digitalWrite(M2_STEP_PIN, HIGH);
-      //printf("moving\n");
+      // printf("moving\n");
       delay(1);
     } else if (throttle_counter_right_motor == 2) {
       digitalWrite(M2_STEP_PIN, LOW);
@@ -240,7 +269,6 @@ int main() {
     if (pid_output > 10 || pid_output < -10) {
       pid_error_temp += pid_output * 0.015;
     }
-  
 
     pid_i_mem += pid_i_gain * pid_error_temp;
     if (pid_i_mem > speed_m) {
@@ -249,8 +277,8 @@ int main() {
       pid_i_mem = -speed_m;
     }
     // Calculate the PID output value
-    pid_output = pid_p_gain * pid_error_temp; 
-      // +  pid_d_gain * (pid_error_temp - pid_last_d_error);
+    pid_output = pid_p_gain * pid_error_temp;
+    // +  pid_d_gain * (pid_error_temp - pid_last_d_error);
     if (pid_output > speed_m) {
       pid_output = speed_m;
     } else if (pid_output < -speed_m) {
@@ -271,8 +299,8 @@ int main() {
       pid_i_mem = 0;
       self_balance_pid_setpoint = 0;
     }
-    //printf("%d\n",pid_error_tem);
-    //printf("%f\n",pid_output);
+    // printf("%d\n",pid_error_tem);
+    // printf("%f\n",pid_output);
 
     pid_output_left = pid_output;
     pid_output_right = pid_output;
