@@ -61,8 +61,8 @@ float turning_speed = 400; // Turning speed (900)
 float max_target_speed = 1400;
 
 float angle_gyro, angle_acc, angle, self_balance_pid_setpoint;
-float pid_error_temp, pid_i_mem, pid_setpoint, gyro_input, pid_output,
-    pid_last_d_error;
+float pid_error_temp, pid_i_mem, pid_setpoint = 1, gyro_input, pid_output,
+                                 pid_last_d_error;
 float pid_output_left, pid_output_right;
 int speed_m = 1000; // max 2500
 float pickup = 0.009;
@@ -74,6 +74,8 @@ float gx_p = 0, gy_p = 0;
 
 int left_motor;
 int right_motor;
+
+int DELAY = 2;
 
 int throttle_left_motor = 200;  // initial throttle for left motor
 int throttle_right_motor = 200; // initial throttle for right motor
@@ -161,26 +163,27 @@ void readIMU() {
     Gy = Gyro_y / 131;
     Gz = Gyro_z / 131;
 
-
     t_now = micros();
     dt = (t_now - t_prev) / 1000000.0;
     t_prev = t_now;
 
     filter();
-      current_pitch   = current_pitch - (gy_hp*dt);
-    float acc_angle = atan2(ax_lp,sqrt(az_lp*az_lp))*(180/3.1415); 
+    current_pitch = current_pitch - (gy_hp * dt);
+    float acc_angle = atan2(ax_lp, sqrt(az_lp * az_lp)) * (180 / 3.1415);
 
-    current_pitch   = (1-alpha1)*current_pitch + (alpha1)*(acc_angle); //complementary filter
+    current_pitch = (1 - alpha1) * current_pitch +
+                    (alpha1) * (acc_angle); // complementary filter
 
     roll =
         alpha * (roll + Gx * dt) + (1 - alpha) * (atan2(Ay, Az) * 180 / M_PI);
-    pitch = alpha * (pitch + Gy * dt) +
-            (1 - alpha) * (atan2(Ax, sqrt(Ay * Ay + Az * Az)) * 180 / M_PI);
+    pitch = current_pitch; // alpha * (pitch + Gy * dt) +
+                           //(1 - alpha) * (atan2(Ax, sqrt(Ay * Ay + Az * Az)) *
+                           //180 / M_PI);
     yaw = alpha * (yaw + Gz * dt) +
           (1 - alpha) * (atan2(sqrt(Ay * Ay + Az * Az), Ax) * 180 / M_PI);
 
     // printf("\n Roll=%.3f°\tPitch=%.3f°\tYaw=%.3f°", roll, pitch, yaw);
-    printf("\n Current Pitch=%.3f°\tPitch=%.3f°\n", current_pitch, pitch);
+    // printf("\n Current Pitch=%.3f°\tPitch=%.3f°\n", current_pitch, pitch);
   }
 }
 
@@ -206,15 +209,15 @@ void leftMotorControl() {
       throttle_left_motor_memory = throttle_left_motor;
       if (throttle_left_motor_memory < 0) {
         digitalWrite(M1_DIR_PIN, LOW);
-        delay(5);
         throttle_left_motor_memory *= -1;
       } else
         digitalWrite(M1_DIR_PIN, HIGH);
     } else if (throttle_counter_left_motor == 1) {
       digitalWrite(M1_STEP_PIN, HIGH);
-      delay(1);
+      delay(DELAY);
     } else if (throttle_counter_left_motor == 2) {
       digitalWrite(M1_STEP_PIN, LOW);
+      delay(2);
     }
   }
 }
@@ -227,16 +230,16 @@ void rightMotorControl() {
       throttle_right_motor_memory = throttle_right_motor;
       if (throttle_right_motor_memory < 0) {
         digitalWrite(M2_DIR_PIN, LOW);
-        delay(5);
         throttle_right_motor_memory *= -1;
       } else
         digitalWrite(M2_DIR_PIN, HIGH);
     } else if (throttle_counter_right_motor == 1) {
       digitalWrite(M2_STEP_PIN, HIGH);
       // printf("moving\n");
-      delay(1);
+      delay(DELAY);
     } else if (throttle_counter_right_motor == 2) {
       digitalWrite(M2_STEP_PIN, LOW);
+      delay(2);
     }
   }
 }
@@ -277,8 +280,8 @@ int main() {
       pid_i_mem = -speed_m;
     }
     // Calculate the PID output value
-    pid_output = pid_p_gain * pid_error_temp;
-    // +  pid_d_gain * (pid_error_temp - pid_last_d_error);
+    pid_output = pid_p_gain * pid_error_temp +
+                 pid_d_gain * (pid_error_temp - pid_last_d_error);
     if (pid_output > speed_m) {
       pid_output = speed_m;
     } else if (pid_output < -speed_m) {
@@ -287,7 +290,7 @@ int main() {
 
     pid_last_d_error = pid_error_temp;
 
-    if (pid_output < 8 && pid_output > -8) {
+    if (pid_output < pid_setpoint + 1 && pid_output > pid_setpoint - 1) {
       pid_output = 0;
     }
     /*if(pid_output > 15 || pid_output < -15) {
@@ -342,9 +345,11 @@ int main() {
     } else {
       right_motor = 0;
     }
-    // Serial.println(left_motor);
+    // std::cout << left_motor << "\t" << right_motor << std::endl;
     throttle_left_motor = left_motor;
     throttle_right_motor = right_motor;
+    DELAY = map(((left_motor + right_motor) >> 2), -600, 600, 2, 10);
+    std::cout << DELAY << std::endl;
     // while (loop_timer > micros())
     //   ;
     // loop_timer += 4000;
