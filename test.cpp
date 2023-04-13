@@ -10,7 +10,7 @@
 
 // Define pins for motor 1
 
-#define mapRange(a1,a2,b1,b2,s) (b1 + (s-a1)*(b2-b1)/(a2-a1))
+#define mapRange(a1, a2, b1, b2, s) (b1 + (s - a1) * (b2 - b1) / (a2 - a1))
 
 // Define pins for motor 1
 #define M1_DIR_PIN 13
@@ -48,9 +48,27 @@ float alpha = 0.8;
 long long int t_prev, t_now;
 float dt;
 
+// MATLAB tuned PID params.
+// Controller Parameters: P = 2.968, I = 9.758, D = 0.1838, N = 7181
 
-int throttle_left_motor = 200;     // initial throttle for left motor
-int throttle_right_motor = 200;    // initial throttle for right motor
+float pid_p_gain = 38;
+float pid_i_gain = 1;
+float pid_d_gain = 36;
+float turning_speed = 400;                                    //Turning speed (900)
+float max_target_speed = 1400;     
+
+float angle_gyro, angle_acc, angle, self_balance_pid_setpoint;
+float pid_error_temp, pid_i_mem, pid_setpoint, gyro_input, pid_output,
+    pid_last_d_error;
+float pid_output_left, pid_output_right;
+int speed_m = 1000; // max 2500
+float pickup = 0.009;
+
+int left_motor;
+int right_motor;
+
+int throttle_left_motor = 200;  // initial throttle for left motor
+int throttle_right_motor = 200; // initial throttle for right motor
 int throttle_counter_left_motor = 0;
 int throttle_counter_right_motor = 0;
 int throttle_left_motor_memory = 0;
@@ -64,7 +82,7 @@ long map(long x, long in_min, long in_max, long out_min, long out_max) {
 
 //  IMU
 
-hort read_raw_data(int addr) {
+short read_raw_data(int addr) {
   short high_byte, low_byte, value;
   high_byte = wiringPiI2CReadReg8(fd, addr);
   low_byte = wiringPiI2CReadReg8(fd, addr + 1);
@@ -90,7 +108,6 @@ float get_gyro_bias() {
   float avg_z = sum_z / num_samples;
   return sqrt(avg_x * avg_x + avg_y * avg_y + avg_z * avg_z);
 }
-
 
 void readIMU() {
   while (1) {
@@ -127,57 +144,53 @@ void readIMU() {
 // STEPPER
 
 void leftMotorPulse() {
-    digitalWrite(M1_STEP_PIN, HIGH);
-    std::this_thread::sleep_for(std::chrono::microseconds(5));
-    digitalWrite(M1_STEP_PIN, LOW);
+  digitalWrite(M1_STEP_PIN, HIGH);
+  std::this_thread::sleep_for(std::chrono::microseconds(5));
+  digitalWrite(M1_STEP_PIN, LOW);
 }
 
 void rightMotorPulse() {
-    digitalWrite(M2_STEP_PIN, HIGH);
-    std::this_thread::sleep_for(std::chrono::microseconds(5));
-    digitalWrite(M2_STEP_PIN, LOW);
+  digitalWrite(M2_STEP_PIN, HIGH);
+  std::this_thread::sleep_for(std::chrono::microseconds(5));
+  digitalWrite(M2_STEP_PIN, LOW);
 }
 
 void leftMotorControl() {
-    while (true) {
-        throttle_counter_left_motor++;
-        if (throttle_counter_left_motor > throttle_left_motor_memory) {
-            throttle_counter_left_motor = 0;
-            throttle_left_motor_memory = throttle_left_motor;
-            if (throttle_left_motor_memory < 0) {
-                digitalWrite(M1_DIR_PIN, LOW);
-                throttle_left_motor_memory *= -1;
-            }
-            else digitalWrite(M1_DIR_PIN, HIGH);
-        }
-        else if (throttle_counter_left_motor == 1) {
-            digitalWrite(M1_STEP_PIN, HIGH);
-        }
-        else if (throttle_counter_left_motor == 2) {
-            digitalWrite(M1_STEP_PIN, LOW);
-        }
+  while (true) {
+    throttle_counter_left_motor++;
+    if (throttle_counter_left_motor > throttle_left_motor_memory) {
+      throttle_counter_left_motor = 0;
+      throttle_left_motor_memory = throttle_left_motor;
+      if (throttle_left_motor_memory < 0) {
+        digitalWrite(M1_DIR_PIN, LOW);
+        throttle_left_motor_memory *= -1;
+      } else
+        digitalWrite(M1_DIR_PIN, HIGH);
+    } else if (throttle_counter_left_motor == 1) {
+      digitalWrite(M1_STEP_PIN, HIGH);
+    } else if (throttle_counter_left_motor == 2) {
+      digitalWrite(M1_STEP_PIN, LOW);
     }
+  }
 }
 
 void rightMotorControl() {
-    while (true) {
-        throttle_counter_right_motor++;
-        if (throttle_counter_right_motor > throttle_right_motor_memory) {
-            throttle_counter_right_motor = 0;
-            throttle_right_motor_memory = throttle_right_motor;
-            if (throttle_right_motor_memory < 0) {
-                digitalWrite(M2_DIR_PIN, HIGH);
-                throttle_right_motor_memory *= -1;
-            }
-            else digitalWrite(M2_DIR_PIN, LOW);
-        }
-        else if (throttle_counter_right_motor == 1) {
-            digitalWrite(M2_STEP_PIN, HIGH);
-        }
-        else if (throttle_counter_right_motor == 2) {
-            digitalWrite(M2_STEP_PIN, LOW);
-        }
+  while (true) {
+    throttle_counter_right_motor++;
+    if (throttle_counter_right_motor > throttle_right_motor_memory) {
+      throttle_counter_right_motor = 0;
+      throttle_right_motor_memory = throttle_right_motor;
+      if (throttle_right_motor_memory < 0) {
+        digitalWrite(M2_DIR_PIN, HIGH);
+        throttle_right_motor_memory *= -1;
+      } else
+        digitalWrite(M2_DIR_PIN, LOW);
+    } else if (throttle_counter_right_motor == 1) {
+      digitalWrite(M2_STEP_PIN, HIGH);
+    } else if (throttle_counter_right_motor == 2) {
+      digitalWrite(M2_STEP_PIN, LOW);
     }
+  }
 }
 
 void setup() {
@@ -192,26 +205,100 @@ void setup() {
 
   fd = wiringPiI2CSetup(Device_Address); /*Initializes I2C with device Address*/
   MPU6050_Init();                        /* Initializes MPU6050 */
-
 }
 
-
 int main() {
-    setup();
-    t_prev = micros();
+  setup();
+  t_prev = micros();
 
-    std::thread imuT(readIMU);
-    std::thread leftMotorT(leftMotorControl);
-    std::thread rightMotorT(rightMotorControl);
+  std::thread imuT(readIMU);
+  std::thread leftMotorT(leftMotorControl);
+  std::thread rightMotorT(rightMotorControl);
 
-    while (true) {
-        // do something here to change the throttle value externally without stopping the threads
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  while (true) {
+    pid_error_temp = pitch - self_balance_pid_setpoint - pid_setpoint;
+    if (pid_output > 10 || pid_output < -10) {
+      pid_error_temp += pid_output * 0.015;
     }
 
-    imuT.join();
-    leftMotorT.join();
-    rightMotorT.join();
+    pid_i_mem += pid_i_gain * pid_error_temp;
+    if (pid_i_mem > speed_m) {
+      pid_i_mem = speed_m;
+    } else if (pid_i_mem < -speed_m) {
+      pid_i_mem = -speed_m;
+    }
+    // Calculate the PID output value
+    pid_output = pid_p_gain * pid_error_temp + pid_i_mem +
+                 pid_d_gain * (pid_error_temp - pid_last_d_error);
+    if (pid_output > speed_m) {
+      pid_output = speed_m;
+    } else if (pid_output < -speed_m) {
+      pid_output = -speed_m;
+    }
 
-    return 0;
+    pid_last_d_error = pid_error_temp;
+
+    if (pid_output < 5 && pid_output > -5) {
+      pid_output = 0;
+    }
+
+    if (pitch > 40 || pitch < -40) {
+      pid_output = 0;
+      pid_i_mem = 0;
+      self_balance_pid_setpoint = 0;
+    }
+
+    pid_output_left = pid_output;
+    pid_output_right = pid_output;
+
+    if (pid_setpoint == 0) {
+      if (pid_output < 0) {
+        self_balance_pid_setpoint += 0.0015;
+      }
+      if (pid_output > 0) {
+        self_balance_pid_setpoint -= 0.0015;
+      }
+    }
+    if (pid_output_left > 0) {
+      pid_output_left = speed_m - (1 / (pid_output_left + 9)) * 5500;
+    } else if (pid_output_left < 0) {
+      pid_output_left = -speed_m - (1 / (pid_output_left - 9)) * 5500;
+    }
+
+    if (pid_output_right > 0) {
+      pid_output_right = speed_m - (1 / (pid_output_right + 9)) * 5500;
+    } else if (pid_output_right < 0) {
+      pid_output_right = -speed_m - (1 / (pid_output_right - 9)) * 5500;
+    }
+
+    // Calculate the needed pulse time for the left and right stepper motor
+    // controllers
+    if (pid_output_left > 0) {
+      left_motor = speed_m - pid_output_left;
+    } else if (pid_output_left < 0) {
+      left_motor = -speed_m - pid_output_left;
+    } else {
+      left_motor = 0;
+    }
+
+    if (pid_output_right > 0) {
+      right_motor = speed_m - pid_output_right;
+    } else if (pid_output_right < 0) {
+      right_motor = -speed_m - pid_output_right;
+    } else {
+      right_motor = 0;
+    }
+    // Serial.println(left_motor);
+    throttle_left_motor = left_motor;
+    throttle_right_motor = right_motor;
+    // while (loop_timer > micros())
+    //   ;
+    // loop_timer += 4000;
+  }
+
+  imuT.join();
+  leftMotorT.join();
+  rightMotorT.join();
+
+  return 0;
 }
