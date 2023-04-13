@@ -34,7 +34,7 @@ ALL:
 	$(CC) $(CFLAGS) -o main main.cpp -lwiringPi
 
 test:
-	$(CC) $(CFLAGS) -o $(TEST) $(TEST).cpp -pthread
+	$(CC) $(CFLAGS) -o $(TEST) $(TEST).cpp -pthread -lwiringPi
 
 clean:
 	rm -rf $(IMU) $(CONTROLLER) $(STEPPER) $(BETA) $(TEST) $(STEPPERS) main *.o
