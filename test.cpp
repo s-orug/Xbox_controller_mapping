@@ -56,6 +56,10 @@ float dt;
 // MATLAB tuned PID params.
 // Controller Parameters: P = 2.968, I = 9.758, D = 0.1838, N = 7181
 
+// PID anglePID(ANGLE_Kp, ANGLE_Kd, ANGLE_Ki, ANGLE_SET_POINT);
+// PID velocityPID(VELOCITY_Kp, VELOCITY_Kd, VELOCITY_Ki, 0.0);
+
+
 float pid_p_gain = 2.968;
 float pid_i_gain = 9.758;
 float pid_d_gain = 0.1838;
@@ -66,7 +70,7 @@ float angle_gyro, angle_acc, angle, self_balance_pid_setpoint;
 float pid_error_temp, pid_i_mem, pid_setpoint = 1, gyro_input, pid_output,
                                  pid_last_d_error;
 float pid_output_left, pid_output_right;
-int speed_m = 1000; // max 2500
+int speed_m = 2500; // max 2500
 float pickup = 0.009;
 float current_pitch = 0;
 
@@ -85,6 +89,10 @@ int throttle_counter_left_motor = 0;
 int throttle_counter_right_motor = 0;
 int throttle_left_motor_memory = 0;
 int throttle_right_motor_memory = 0;
+
+// PID
+
+PID motorsPID(2.968, 9.758, 0.1838, 0);
 
 // GENERAL
 
@@ -269,6 +277,8 @@ int main() {
   std::thread rightMotorT(rightMotorControl);
 
   while (true) {
+
+
     pid_error_temp = pitch - pid_setpoint;
     // std::cout << pid_error_temp << std::endl;
     if (pid_output > 10 || pid_output < -10) {
@@ -282,10 +292,12 @@ int main() {
       pid_i_mem = -speed_m;
     }
     // Calculate the PID output value
-    pid_output = pid_p_gain * pid_error_temp +
-                 pid_d_gain * (pid_error_temp - pid_last_d_error);
+    // pid_output = pid_p_gain * pid_error_temp +
+    //              pid_d_gain * (pid_error_temp - pid_last_d_error);
+    pid_output = motorsPID.getControl(current_pitch, dt);
+    std::cout << pid_output << std::endl;
 
-                 
+
     if (pid_output > speed_m) {
       pid_output = speed_m;
     } else if (pid_output < -speed_m) {
