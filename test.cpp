@@ -9,6 +9,8 @@
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
 
+#include "PID/PID.h"
+
 // Define pins for motor 1
 
 #define mapRange(a1, a2, b1, b2, s) (b1 + (s - a1) * (b2 - b1) / (a2 - a1))
@@ -282,6 +284,8 @@ int main() {
     // Calculate the PID output value
     pid_output = pid_p_gain * pid_error_temp +
                  pid_d_gain * (pid_error_temp - pid_last_d_error);
+
+                 
     if (pid_output > speed_m) {
       pid_output = speed_m;
     } else if (pid_output < -speed_m) {
