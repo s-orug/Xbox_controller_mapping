@@ -332,7 +332,7 @@ int main() {
     // Calculate the PID output value
     // pid_output = pid_p_gain * pid_error_temp +
     //              pid_d_gain * (pid_error_temp - pid_last_d_error);
-    pid_output = motorsPID.getControl(current_pitch, dt);
+    pid_output = motorsPID.getControl(current_pitch, dt/100000);
     std::cout << pid_output << std::endl;
 
     if (pid_output > speed_m) {
@@ -402,7 +402,7 @@ int main() {
     throttle_left_motor = left_motor;
     throttle_right_motor = right_motor;
     DELAY = map(((left_motor + right_motor) >> 2), -600, 600, 2, 10);
-    std::cout << DELAY << std::endl;
+    // std::cout << DELAY << std::endl;
     // while (loop_timer > micros())
     //   ;
     // loop_timer += 4000;
