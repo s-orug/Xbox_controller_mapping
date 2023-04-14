@@ -51,6 +51,13 @@ float alpha = 0.8;
 long long int t_prev, t_now;
 float dt;
 
+float k[4] = {-10,-10.6897,70.5556,16.7775};//{18.8 ,  -7746.3  , 40.1 ,  -70};//22 ,-7458.4,  40  ,-60.8};
+
+//  gains for yaw | yaw_dot
+float k1[2] = {-2,   -0.3};
+
+float u[2] = {0, 0};
+float v[2] = {0, 0};
 // MATLAB tuned PID params.
 // Controller Parameters: P = 2.968, I = 9.758, D = 0.1838, N = 7181
 
@@ -70,6 +77,8 @@ float pid_output_left, pid_output_right;
 int speed_m = 2500; // max 2500
 float pickup = 0.009;
 float current_pitch = 0;
+float prev_pitch = 0;
+float prev_yaw = 0;
 
 float ax_lp = 0, ay_lp = 0, az_lp = 0;
 float gx_hp = 0, gy_hp = 0, gz_hp = 0;
@@ -87,53 +96,12 @@ int throttle_counter_right_motor = 0;
 int throttle_left_motor_memory = 0;
 int throttle_right_motor_memory = 0;
 
-class PID {
-public:
-  PID(float Kp, float Kd, float Ki, float target) {
-    _Kp = Kp;
-    _Kd = Kd;
-    _Ki = Ki;
-    _target = target;
-  }
-
-  float getControl(float value, float dt_seconds) {
-    float lastValue = _has_last_value ? _last_value : value;
-    float error = _target - value;
-    float de = -(value - lastValue) / dt_seconds;
-    _integralError += _Ki * error * dt_seconds;
-    _lastError = error;
-    _last_value = value;
-    _has_last_value = true;
-    return (_Kp * error + _Kd * de + _integralError);
-  }
-
-  void setSettings(float Kp, float Kd, float Ki) {
-    _Kp = Kp;
-    _Kd = Kd;
-    _Ki = Ki;
-  }
-
-  void setTarget(float target) {
-    _target = target;
-    _integralError = .0;
-  }
-
-private:
-  float _Kp;
-  float _Kd;
-  float _Ki;
-  float _lastError;
-  float _integralError;
-  float _target;
-  float _last_value;
-  float _last_pid;
-  bool _has_last_value = false;
-};
+bool DRIVE_MOTORS = false;
 
 // PID
 
-PID motorsPID(2.968, 9.758, 0.1838, 0);
-PID anglePID(2.968, 9.758, 0.1838, 0);
+// PID motorsPID(2.968, 9.758, 0.1838, 0);
+// PID anglePID(2.968, 9.758, 0.1838, 0);
 
 // GENERAL
 
@@ -254,6 +222,7 @@ void rightMotorPulse() {
 
 void leftMotorControl() {
   while (true) {
+    if (DRIVE_MOTORS){
     throttle_counter_left_motor++;
     if (throttle_counter_left_motor > throttle_left_motor_memory) {
       throttle_counter_left_motor = 0;
@@ -270,11 +239,14 @@ void leftMotorControl() {
       digitalWrite(M1_STEP_PIN, LOW);
       delay(2);
     }
+    DRIVE_MOTORS = false;
+    }
   }
 }
 
 void rightMotorControl() {
   while (true) {
+    if (DRIVE_MOTORS){
     throttle_counter_right_motor++;
     if (throttle_counter_right_motor > throttle_right_motor_memory) {
       throttle_counter_right_motor = 0;
@@ -291,6 +263,8 @@ void rightMotorControl() {
     } else if (throttle_counter_right_motor == 2) {
       digitalWrite(M2_STEP_PIN, LOW);
       delay(2);
+    }
+    DRIVE_MOTORS = false;
     }
   }
 }
@@ -317,6 +291,7 @@ int main() {
   std::thread leftMotorT(leftMotorControl);
   std::thread rightMotorT(rightMotorControl);
 
+  float mod_pitch = map(pid_output, -260, 260, -90, 90);
   while (true) {
 
     pid_error_temp = pitch - pid_setpoint;
@@ -336,7 +311,7 @@ int main() {
                   pid_d_gain * (pid_error_temp - pid_last_d_error);
     // float pid_angle = anglePID.getControl(current_pitch, dt/100000);
     // pid_output = motorsPID.getControl(current_pitch, dt/100000);
-     std::cout << map(pid_output, -260, 260, -90, 90) << "\t" << current_pitch << std::endl;
+     //std::cout << map(pid_output, -260, 260, -90, 90) << "\t" << current_pitch << std::endl;
      delay(10);
     if (pid_output > speed_m) {
       pid_output = speed_m;
@@ -405,10 +380,27 @@ int main() {
     throttle_left_motor = left_motor;
     throttle_right_motor = right_motor;
     DELAY = map(((left_motor + right_motor) >> 2), -600, 600, 2, 10);
+
+    float pitch_dot = (current_pitch - prev_pitch)/dt;
+    float yaw_dot = (yaw - prev_yaw)/dt;
+    float angle_dot = (0);
+    u[0] = ( k[0]*(prev_pitch-mod_pitch) //angle
+	     +k[1]*(-mod_pitch) // position
+	     +k[2]*(DELAY) // velocity
+	     +k[3]*(-pitch_dot)); // angular velocity
+          
+    u[1] = (k1[0]*yaw +k1[1]*yaw_dot) ;
+    v[0] = (0.5 *(u[0] + u[1])); // for right motor
+    v[1] = (0.5 *(u[0] + u[1])); // for left motor
+
+    // std::cout << "U:\t" << u[0] << "\t" << u[1] << std::endl;
+     std::cout << "V:\t" << v[0] << "\t" << v[1] << std::endl;
     // std::cout << DELAY << std::endl;
-    // while (loop_timer > micros())
+    // while (loop_t0imer > micros())
     //   ;
     // loop_timer += 4000;
+    prev_pitch = mod_pitch;
+    prev_yaw = yaw;
   }
 
   imuT.join();
