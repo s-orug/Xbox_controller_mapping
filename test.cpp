@@ -126,12 +126,14 @@ private:
   float _integralError;
   float _target;
   float _last_value;
+  float _last_pid;
   bool _has_last_value = false;
 };
 
 // PID
 
 PID motorsPID(2.968, 9.758, 0.1838, 0);
+PID anglePID(2.968, 9.758, 0.1838, 0);
 
 // GENERAL
 
@@ -330,11 +332,12 @@ int main() {
       pid_i_mem = -speed_m;
     }
     // Calculate the PID output value
-    // pid_output = pid_p_gain * pid_error_temp +
-    //              pid_d_gain * (pid_error_temp - pid_last_d_error);
-    pid_output = motorsPID.getControl(current_pitch, dt/100000);
-    std::cout << pid_output << std::endl;
-
+     pid_output = pid_p_gain * pid_error_temp +
+                  pid_d_gain * (pid_error_temp - pid_last_d_error);
+    // float pid_angle = anglePID.getControl(current_pitch, dt/100000);
+    // pid_output = motorsPID.getControl(current_pitch, dt/100000);
+     std::cout << map(pid_output, -260, 260, -90, 90) << "\t" << current_pitch << std::endl;
+     delay(10);
     if (pid_output > speed_m) {
       pid_output = speed_m;
     } else if (pid_output < -speed_m) {
