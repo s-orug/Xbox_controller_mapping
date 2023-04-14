@@ -277,22 +277,22 @@ void readIMU() {
 void leftMotorPulse() {
   digitalWrite(M1_STEP_PIN, HIGH);
   //std::this_thread::sleep_for(std::chrono::microseconds(DELAY));
-  delay(2.5); // {1, 2, 2.5}
+  delay(0); // {0, 1, 2, 2.5}
   digitalWrite(M1_STEP_PIN, LOW);
-  delay(0.85); // {0.75, 0.8, 0.85}
+  delay(1); // {1. 0.75, 0.8, 0.85}
 }
 
 void rightMotorPulse() {
   digitalWrite(M2_STEP_PIN, HIGH);
   //std::this_thread::sleep_for(std::chrono::microseconds(DELAY));
-  delay(2.5);
+  delay(0);
   digitalWrite(M2_STEP_PIN, LOW);
-  delay(.85);
+  delay(1);
 }
 
 void leftMotorControl() {
   while (true) {
-    if (DRIVE_MOTORS){
+    if (1==0){
     throttle_counter_left_motor++;
     if (throttle_counter_left_motor > throttle_left_motor_memory) {
       throttle_counter_left_motor = 0;
@@ -317,10 +317,15 @@ void leftMotorControl() {
 
 void rightMotorControl() {
   while (true) {
-    DELAY = 2500;
-    rightMotorPulse();
-    leftMotorPulse();
+    // DELAY = 2500;
+    //   rightMotorPulse();
+    // leftMotorPulse();
   }
+}
+
+void updateBalance(){
+  // std::cout << v[0] << std::endl;
+  
 }
 
 void setup() {
@@ -449,8 +454,9 @@ int main() {
     v[0] = (0.5 *(u[0] + u[1])); // for right motor
     v[1] = (0.5 *(u[0] + u[1])); // for left motor
 
+    updateBalance();
     // std::cout << "U:\t" << u[0] << "\t" << u[1] << std::endl;
-     std::cout << "V:\t" << v[0] << "\t" << v[1] << std::endl;
+    // std::cout << "V:\t" << v[0] << "\t" << v[1] << std::endl;
     // std::cout << DELAY << std::endl;
     // while (loop_t0imer > micros())
     //   ;
