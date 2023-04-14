@@ -51,6 +51,7 @@ float roll = 0, pitch = 0, yaw = 0;
 float alpha = 0.8;
 long long int t_prev, t_now;
 float dt;
+float accel = 0, velocity = 0;
 
 float k[4] = {-10,-10.6897,70.5556,16.7775};//{18.8 ,  -7746.3  , 40.1 ,  -70};//22 ,-7458.4,  40  ,-60.8};
 
@@ -274,20 +275,20 @@ void readIMU() {
 
 // STEPPER
 
-void leftMotorPulse() {
+void leftMotorPulse(float d1, float d2) {
   digitalWrite(M1_STEP_PIN, HIGH);
   //std::this_thread::sleep_for(std::chrono::microseconds(DELAY));
-  delay(0); // {0, 1, 2, 2.5}
+  delay(d1); // {0, 1, 2, 2.5}
   digitalWrite(M1_STEP_PIN, LOW);
-  delay(1); // {1. 0.75, 0.8, 0.85}
+  delay(0.75); // {1. 0.75, 0.8, 0.85}
 }
 
-void rightMotorPulse() {
+void rightMotorPulse(float d1, float d2) {
   digitalWrite(M2_STEP_PIN, HIGH);
   //std::this_thread::sleep_for(std::chrono::microseconds(DELAY));
-  delay(0);
+  delay(d1);
   digitalWrite(M2_STEP_PIN, LOW);
-  delay(1);
+  delay(0.75);
 }
 
 void leftMotorControl() {
@@ -323,9 +324,30 @@ void rightMotorControl() {
   }
 }
 
-void updateBalance(){
-  // std::cout << v[0] << std::endl;
+void updateMotors(float velocity){
+  float delay = mapRange(0, 800, 3, 0, abs(velocity));
+  float delay2 = mapRange(0, 800, 0.75, 1, abs(velocity));
+
+  digitalWrite(M1_DIR_PIN, HIGH);
+  digitalWrite(M2_DIR_PIN, HIGH);
   
+  rightMotorPulse(delay, delay2);
+  leftMotorPulse(delay, delay2);
+  std::cout << delay << std::endl;
+}
+
+void updateVelocity(unsigned long nowT, float accel){
+  // std::cout << v[0] << std::endl;
+  static unsigned long timestamp = micros();
+  if(nowT - timestamp < 50){
+    return;
+  }
+  float _dt = ((float) (nowT - timestamp)) * 1e-6;
+  velocity = accel*dt;
+  updateMotors(velocity);
+  timestamp = nowT;
+  updateMotors(velocity);
+  // std::cout << velocity << std::endl;
 }
 
 void setup() {
@@ -373,7 +395,7 @@ int main() {
     // float pid_angle = anglePID.getControl(current_pitch, dt/100000);
     // pid_output = motorsPID.getControl(current_pitch, dt/100000);
      //std::cout << map(pid_output, -260, 260, -90, 90) << "\t" << current_pitch << std::endl;
-     delay(10);
+    delay(10);
     if (pid_output > speed_m) {
       pid_output = speed_m;
     } else if (pid_output < -speed_m) {
@@ -454,7 +476,12 @@ int main() {
     v[0] = (0.5 *(u[0] + u[1])); // for right motor
     v[1] = (0.5 *(u[0] + u[1])); // for left motor
 
-    updateBalance();
+    unsigned long nowT = micros();
+    accel = v[0];
+    updateVelocity(nowT, accel);
+    
+    // updateControl(nowT);
+    
     // std::cout << "U:\t" << u[0] << "\t" << u[1] << std::endl;
     // std::cout << "V:\t" << v[0] << "\t" << v[1] << std::endl;
     // std::cout << DELAY << std::endl;
