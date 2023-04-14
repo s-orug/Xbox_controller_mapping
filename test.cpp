@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <thread>
+#include <stdint.h>
 
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
@@ -103,6 +104,71 @@ bool DRIVE_MOTORS = false;
 // PID motorsPID(2.968, 9.758, 0.1838, 0);
 // PID anglePID(2.968, 9.758, 0.1838, 0);
 
+class Stepper {
+  public:
+
+  
+
+int getTicksPerPulse(float velocity, int32_t ticksPerSecond, uint32_t pulsesPerRevolution, uint32_t pulseWidth) {
+  if (abs(velocity) < 1e-3) {
+    return UINT32_MAX;
+  } else {
+    return (uint32_t)(6.28318530718 * ticksPerSecond / (abs(velocity) * pulsesPerRevolution)) - pulseWidth;
+  }  
+}
+
+Stepper(int enablePin, int dirPin, int stepPin, uint32_t ticksPerSecond, uint32_t pulsesPerRevolution, uint32_t pulseWidth) {
+  // this->enablePin = enablePin;
+  this->dirPin = dirPin;
+  this->stepPin = stepPin;
+  this->ticksPerSecond = ticksPerSecond;
+  this->pulsesPerRevolution = pulsesPerRevolution;
+  this->pulseWidth = pulseWidth;  
+}
+
+void init() {
+  // wiringPiSetupGpio();
+  // pinMode(enablePin, OUTPUT);
+  // pinMode(dirPin, OUTPUT);
+  // pinMode(stepPin, OUTPUT);
+  digitalWrite(stepPin, LOW);
+
+  
+  this->currentTick = 0;
+}
+
+void setEnabled(bool enabled) {
+  digitalWrite(enablePin, enabled ? LOW : HIGH);
+}
+
+void setVelocity(float velocity) {
+  ticksPerPulse = getTicksPerPulse(velocity, ticksPerSecond, pulsesPerRevolution, pulseWidth);
+  digitalWrite(dirPin, velocity > 0 ? HIGH : LOW);
+}
+
+void tick() {
+  if (currentTick >= ticksPerPulse) {
+    currentTick = 0;
+  }
+  if (currentTick == 0) {
+    digitalWrite(stepPin, HIGH);
+  } else if (currentTick == pulseWidth) {    
+    digitalWrite(stepPin, LOW);
+  }
+  currentTick++; 
+}
+  private:
+    int enablePin;
+    int dirPin;
+    int stepPin;
+    uint32_t ticksPerSecond;
+    uint32_t pulsesPerRevolution;
+    uint32_t pulseWidth;
+    volatile uint32_t currentTick;
+    volatile uint32_t ticksPerPulse;
+};
+
+// Stepper m1(-1, M1_DIR_PIN, M1_STEP_PIN, 100000, 200, 10);
 // GENERAL
 
 long map(long x, long in_min, long in_max, long out_min, long out_max) {
@@ -210,14 +276,18 @@ void readIMU() {
 
 void leftMotorPulse() {
   digitalWrite(M1_STEP_PIN, HIGH);
-  std::this_thread::sleep_for(std::chrono::microseconds(5));
+  //std::this_thread::sleep_for(std::chrono::microseconds(DELAY));
+  delay(2.5); // {1, 2, 2.5}
   digitalWrite(M1_STEP_PIN, LOW);
+  delay(0.85); // {0.75, 0.8, 0.85}
 }
 
 void rightMotorPulse() {
   digitalWrite(M2_STEP_PIN, HIGH);
-  std::this_thread::sleep_for(std::chrono::microseconds(5));
+  //std::this_thread::sleep_for(std::chrono::microseconds(DELAY));
+  delay(2.5);
   digitalWrite(M2_STEP_PIN, LOW);
+  delay(.85);
 }
 
 void leftMotorControl() {
@@ -244,28 +314,12 @@ void leftMotorControl() {
   }
 }
 
+
 void rightMotorControl() {
   while (true) {
-    if (DRIVE_MOTORS){
-    throttle_counter_right_motor++;
-    if (throttle_counter_right_motor > throttle_right_motor_memory) {
-      throttle_counter_right_motor = 0;
-      throttle_right_motor_memory = throttle_right_motor;
-      if (throttle_right_motor_memory < 0) {
-        digitalWrite(M2_DIR_PIN, LOW);
-        throttle_right_motor_memory *= -1;
-      } else
-        digitalWrite(M2_DIR_PIN, HIGH);
-    } else if (throttle_counter_right_motor == 1) {
-      digitalWrite(M2_STEP_PIN, HIGH);
-      // printf("moving\n");
-      delay(DELAY);
-    } else if (throttle_counter_right_motor == 2) {
-      digitalWrite(M2_STEP_PIN, LOW);
-      delay(2);
-    }
-    DRIVE_MOTORS = false;
-    }
+    DELAY = 2500;
+    rightMotorPulse();
+    leftMotorPulse();
   }
 }
 
@@ -281,6 +335,8 @@ void setup() {
 
   fd = wiringPiI2CSetup(Device_Address); /*Initializes I2C with device Address*/
   MPU6050_Init();                        /* Initializes MPU6050 */
+  // m1.setVelocity(100);
+  // m1.tick();
 }
 
 int main() {
@@ -383,7 +439,7 @@ int main() {
 
     float pitch_dot = (current_pitch - prev_pitch)/dt;
     float yaw_dot = (yaw - prev_yaw)/dt;
-    float angle_dot = (0);
+    //float angle_dot = (0);
     u[0] = ( k[0]*(prev_pitch-mod_pitch) //angle
 	     +k[1]*(-mod_pitch) // position
 	     +k[2]*(DELAY) // velocity
