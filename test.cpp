@@ -9,8 +9,6 @@
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
 
-#include "PID/PID.h"
-
 // Define pins for motor 1
 
 #define mapRange(a1, a2, b1, b2, s) (b1 + (s - a1) * (b2 - b1) / (a2 - a1))
@@ -59,7 +57,6 @@ float dt;
 // PID anglePID(ANGLE_Kp, ANGLE_Kd, ANGLE_Ki, ANGLE_SET_POINT);
 // PID velocityPID(VELOCITY_Kp, VELOCITY_Kd, VELOCITY_Ki, 0.0);
 
-
 float pid_p_gain = 2.968;
 float pid_i_gain = 9.758;
 float pid_d_gain = 0.1838;
@@ -89,6 +86,48 @@ int throttle_counter_left_motor = 0;
 int throttle_counter_right_motor = 0;
 int throttle_left_motor_memory = 0;
 int throttle_right_motor_memory = 0;
+
+class PID {
+public:
+  PID(float Kp, float Kd, float Ki, float target) {
+    _Kp = Kp;
+    _Kd = Kd;
+    _Ki = Ki;
+    _target = target;
+  }
+
+  float getControl(float value, float dt_seconds) {
+    float lastValue = _has_last_value ? _last_value : value;
+    float error = _target - value;
+    float de = -(value - lastValue) / dt_seconds;
+    _integralError += _Ki * error * dt_seconds;
+    _lastError = error;
+    _last_value = value;
+    _has_last_value = true;
+    return (_Kp * error + _Kd * de + _integralError);
+  }
+
+  void setSettings(float Kp, float Kd, float Ki) {
+    _Kp = Kp;
+    _Kd = Kd;
+    _Ki = Ki;
+  }
+
+  void setTarget(float target) {
+    _target = target;
+    _integralError = .0;
+  }
+
+private:
+  float _Kp;
+  float _Kd;
+  float _Ki;
+  float _lastError;
+  float _integralError;
+  float _target;
+  float _last_value;
+  bool _has_last_value = false;
+};
 
 // PID
 
@@ -188,7 +227,7 @@ void readIMU() {
         alpha * (roll + Gx * dt) + (1 - alpha) * (atan2(Ay, Az) * 180 / M_PI);
     pitch = current_pitch; // alpha * (pitch + Gy * dt) +
                            //(1 - alpha) * (atan2(Ax, sqrt(Ay * Ay + Az * Az)) *
-                           //180 / M_PI);
+                           // 180 / M_PI);
     yaw = alpha * (yaw + Gz * dt) +
           (1 - alpha) * (atan2(sqrt(Ay * Ay + Az * Az), Ax) * 180 / M_PI);
 
@@ -278,7 +317,6 @@ int main() {
 
   while (true) {
 
-
     pid_error_temp = pitch - pid_setpoint;
     // std::cout << pid_error_temp << std::endl;
     if (pid_output > 10 || pid_output < -10) {
@@ -296,7 +334,6 @@ int main() {
     //              pid_d_gain * (pid_error_temp - pid_last_d_error);
     pid_output = motorsPID.getControl(current_pitch, dt);
     std::cout << pid_output << std::endl;
-
 
     if (pid_output > speed_m) {
       pid_output = speed_m;
