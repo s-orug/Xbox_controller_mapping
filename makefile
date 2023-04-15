@@ -8,12 +8,15 @@ STEPPER=stepper
 TEST=test
 STEPPERS=steppers
 BETA=beta
+V2=v2
 
 main: 
 	$(CC) $(CFLAGS) -o main main.cpp -lwiringPi
 
 BETA:
 	$(CC) $(CFLAGS) -o $(BETA) $(BETA).cpp -pthread -lwiringPi
+V2:
+	$(CC) $(CFLAGS) -o $(V2) $(V2).cpp -pthread -lwiringPi
 
 IMU:
 	$(CC) $(CFLAGS) -o $(IMU) $(IMU).cpp -pthread -lwiringPi

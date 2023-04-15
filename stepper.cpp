@@ -52,6 +52,20 @@ public:
 	//std::cout << step_delay << std::endl ;
     }
 
+  /*  void set_acceleration(float acceleration){
+      if (acceleration = 0.0){
+	return;
+      if (acceleration < 0.0){
+	acceleration = - acceleration;  
+	}
+      if (_acceleration != acceleration){
+	_n = _n * (_acceleration / acceleration);
+	_c0 = 0.676 * sqrt(2.0 / acceleration) * 1000000.0;
+	_acceleration = acceleration;
+	computeNewSpeed();
+    }
+    }*/
+
     void loop() {
         float now = micros() / 1e6;
 	if (now - last_step_ts >= step_delay) {
@@ -65,16 +79,16 @@ int main() {
     wiringPiSetupGpio();
     Stepper motor(13, 6, 200);
 
-    float vel = 1;
-    motor.set_direction(1);
+    float vel = 10;
+    motor.set_direction(-1);
     motor.set_velocity(-10 * M_PI);
 
     while (true) {
         motor.loop();
-	/*if (vel > -100)
-	  {	vel = vel - 0.00001;
-	motor.set_velocity(vel);
-	*/std::cout << vel << std::endl;
+	if (vel > -92)
+	  {	vel = vel + 0.001;
+	    motor.set_velocity(vel);}
+	std::cout << vel << std::endl;
     }
 
     return 0;
