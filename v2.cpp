@@ -74,9 +74,13 @@ float v[2] = {0, 0};
 // PID anglePID(ANGLE_Kp, ANGLE_Kd, ANGLE_Ki, ANGLE_SET_POINT);
 // PID velocityPID(VELOCITY_Kp, VELOCITY_Kd, VELOCITY_Ki, 0.0);
 
-float pid_p_gain = 2.898;
-float pid_i_gain = 0.001;
-float pid_d_gain = 0.00538;
+float pid_p_gain = 2.2196;
+float pid_i_gain = 0.06222;
+float pid_d_gain = 0.1;
+
+float pid_threshold_l = 1.5;
+float pid_threshold_r = -1;
+
 float turning_speed = 400; // Turning speed (900)
 float max_target_speed = 1400;
 
@@ -322,7 +326,7 @@ int main() {
 
     pid_last_d_error = pid_error_temp;
 
-    if (pid_output < pid_setpoint + 2 && pid_output > pid_setpoint - 2) {
+    if (pid_output < pid_threshold_l && pid_output > pid_threshold_r) {
       pid_output = 0;
     }
     /*if(pid_output > 15 || pid_output < -15) {
