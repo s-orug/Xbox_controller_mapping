@@ -45,6 +45,8 @@
 #define GYRO_ZOUT_H 0x47
 
 #define alpha1 0.03
+#define MIN_VELOCITY -50
+#define MAX_VELOCITY 50
 
 int fd;
 int M1_LOCK = 0, M2_LOCK = 0;
@@ -72,9 +74,9 @@ float v[2] = {0, 0};
 // PID anglePID(ANGLE_Kp, ANGLE_Kd, ANGLE_Ki, ANGLE_SET_POINT);
 // PID velocityPID(VELOCITY_Kp, VELOCITY_Kd, VELOCITY_Ki, 0.0);
 
-float pid_p_gain = 2.968;
-float pid_i_gain = 9.758;
-float pid_d_gain = 0.1838;
+float pid_p_gain = 2.898;
+float pid_i_gain = 0.001;
+float pid_d_gain = 0.00538;
 float turning_speed = 400; // Turning speed (900)
 float max_target_speed = 1400;
 
@@ -245,6 +247,36 @@ void readIMU() {
   
 }
 
+Stepper r_motor(13, 6, 200);
+Stepper l_motor(26, 19, 200);
+
+bool UPDATE_VELOCITY = false;
+void update_motors(){
+  while(1){
+    if(pitch < -30 || pitch > 30){
+      l_motor.set_velocity(0);
+      r_motor.set_velocity(0);
+      continue;
+    }
+    
+    if(pitch > -30 && pitch < 30){
+      if(pid_output > MAX_VELOCITY){
+	pid_output = MAX_VELOCITY;
+      }
+      if(pid_output < MIN_VELOCITY){
+	pid_output = MIN_VELOCITY;
+      }
+
+      printf("%.3f\n",pid_output);
+    r_motor.set_velocity(pid_output);
+    r_motor.loop();
+
+    l_motor.set_velocity(pid_output);
+    l_motor.loop();
+    UPDATE_VELOCITY = false;
+    }
+  }
+}
 
 void setup() {
   wiringPiSetupGpio();
@@ -257,13 +289,12 @@ void setup() {
   MPU6050_Init(); 
 }
 
-Stepper r_motor(13, 6, 200);
-Stepper l_motor(26, 19, 200);
-
 int main() {
   setup();
   t_prev = micros();
 
+  std::thread mT(update_motors);
+  
   float mod_pitch = map(pid_output, -260, 260, -90, 90);
   while (true) {
 
@@ -280,8 +311,8 @@ int main() {
       pid_i_mem = -speed_m;
     }
     // Calculate the PID output value
-     pid_output = pid_p_gain * pid_error_temp +
-                  pid_d_gain * (pid_error_temp - pid_last_d_error);
+    pid_output = pid_p_gain * pid_error_temp + pid_i_mem + pid_d_gain * (pid_error_temp - pid_last_d_error);
+
      
     if (pid_output > speed_m) {
       pid_output = speed_m;
@@ -298,27 +329,25 @@ int main() {
       pid_output = 15;
     }*/
 
+    // printf("%.3f\n",pitch);
     if (pitch > 30 || pitch < -30) {
       pid_output = 0;
       pid_i_mem = 0;
       self_balance_pid_setpoint = 0;
     }
-    // printf("%d\n",pid_error_tem);
-
-    float vel = 1;
-    //motor.set_direction(1);
-    //motor.set_velocity(-10 * M_PI);
-    r_motor.set_velocity(pid_output*2*M_PI);
-    r_motor.loop();
-
-    l_motor.set_velocity(pid_output*2*M_PI);
-    l_motor.loop();
-    
-    printf("%f\n",pid_output);
+  
+    UPDATE_VELOCITY = true;
+    if(pid_output < MIN_VELOCITY){
+      pid_output = MIN_VELOCITY;
+    }
+    else if (pid_output > MAX_VELOCITY){
+      pid_output = MAX_VELOCITY;
+    }
+    // printf("%f\n",pid_output);
 
     pid_output_left = pid_output;
     pid_output_right = pid_output;
-
+    /*
     if (pid_setpoint == 0) {
       if (pid_output < 0) {
         self_balance_pid_setpoint += 0.0015;
@@ -372,11 +401,12 @@ int main() {
     u[1] = (k1[0]*yaw +k1[1]*yaw_dot) ;
     v[0] = (0.5 *(u[0] + u[1])); // for right motor
     v[1] = (0.5 *(u[0] + u[1])); // for left motor
-
+    */
     unsigned long nowT = micros();
     accel = v[0];
     prev_pitch = mod_pitch;
     prev_yaw = yaw;
   }
+  mT.join();
   return 0;
 }
