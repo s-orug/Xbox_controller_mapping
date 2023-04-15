@@ -49,7 +49,7 @@ public:
 	  step_delay = (((2.0 * M_PI) / _ppr) / abs(velocity)) - (1e-6);
             set_direction(velocity > 0 ? CW : CCW);
         }
-	std::cout << step_delay << std::endl ;
+	//std::cout << step_delay << std::endl ;
     }
 
     void loop() {
@@ -65,11 +65,16 @@ int main() {
     wiringPiSetupGpio();
     Stepper motor(13, 6, 200);
 
+    float vel = 1;
     motor.set_direction(1);
     motor.set_velocity(-10 * M_PI);
 
     while (true) {
         motor.loop();
+	/*if (vel > -100)
+	  {	vel = vel - 0.00001;
+	motor.set_velocity(vel);
+	*/std::cout << vel << std::endl;
     }
 
     return 0;
