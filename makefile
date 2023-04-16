@@ -9,7 +9,10 @@ TEST=test
 STEPPERS=steppers
 BETA=beta
 V2=v2
+LQR=lqr
 
+LQR:
+	$(CC) $(CFLAGS) -o $(LQR) $(LQR).cpp -pthread -lwiringPi
 main: 
 	$(CC) $(CFLAGS) -o main main.cpp -lwiringPi
 
@@ -17,7 +20,6 @@ BETA:
 	$(CC) $(CFLAGS) -o $(BETA) $(BETA).cpp -pthread -lwiringPi
 V2:
 	$(CC) $(CFLAGS) -o $(V2) $(V2).cpp -pthread -lwiringPi
-
 IMU:
 	$(CC) $(CFLAGS) -o $(IMU) $(IMU).cpp -pthread -lwiringPi
 
@@ -40,4 +42,4 @@ test:
 	$(CC) $(CFLAGS) -o $(TEST) $(TEST).cpp -pthread -lwiringPi
 
 clean:
-	rm -rf $(IMU) $(CONTROLLER) $(STEPPER) $(BETA) $(TEST) $(STEPPERS) main *.o
+	rm -rf $(IMU) $(CONTROLLER) $(STEPPER) $(BETA) $(LQR) $(TEST) $(STEPPERS) main *.o
